@@ -1,16 +1,16 @@
 from fastapi import FastAPI
 
+from backend.app.api.v1.router import api_router
+from backend.app.core.config import get_settings
+
+settings = get_settings()
+
 app = FastAPI(
-    title="JobShield AI API",
+    title=settings.app_name,
     version="0.1.0",
-    description="AI-assisted recruitment fraud and job security analysis API.",
+    description=(
+        "AI-assisted recruitment fraud and job security analysis API."
+    ),
 )
 
-
-@app.get("/api/v1/health")
-def health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "jobshield-api",
-        "version": "0.1.0",
-    }
+app.include_router(api_router, prefix=settings.api_v1_prefix)
