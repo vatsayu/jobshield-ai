@@ -1,3 +1,4 @@
+from ipaddress import ip_address
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 
@@ -8,27 +9,72 @@ class URLNormalizationError(ValueError):
     """Raised when a URL cannot be safely normalized."""
 
 
+def _validate_hostname(hostname: str) -> str:
+    normalized_hostname = hostname.rstrip(".").lower()
+
+    if not normalized_hostname:
+        raise URLNormalizationError(
+            "URL must contain a valid hostname."
+        )
+
+    if any(character.isspace() for character in normalized_hostname):
+        raise URLNormalizationError(
+            "URL hostname must not contain whitespace."
+        )
+
+    return normalized_hostname
+
+
+def _validate_ip_target(hostname: str) -> None:
+    try:
+        address = ip_address(hostname)
+    except ValueError:
+        return
+
+    if (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_unspecified
+        or address.is_reserved
+    ):
+        raise URLNormalizationError(
+            "Private, local, reserved, or otherwise unsafe IP targets "
+            "are not allowed."
+        )
+
+
 def normalize_url(url: str) -> str:
     if not isinstance(url, str) or not url.strip():
-        raise URLNormalizationError("URL must be a non-empty string.")
+        raise URLNormalizationError(
+            "URL must be a non-empty string."
+        )
 
     raw_url = url.strip()
     parsed = urlsplit(raw_url)
 
     scheme = parsed.scheme.lower()
-    hostname = parsed.hostname
 
     if scheme not in ALLOWED_SCHEMES:
         raise URLNormalizationError(
             "Only HTTP and HTTPS URLs are supported."
         )
 
+    if parsed.username is not None or parsed.password is not None:
+        raise URLNormalizationError(
+            "URLs containing embedded credentials are not allowed."
+        )
+
+    hostname = parsed.hostname
+
     if not hostname:
         raise URLNormalizationError(
             "URL must contain a valid hostname."
         )
 
-    normalized_hostname = hostname.rstrip(".").lower()
+    normalized_hostname = _validate_hostname(hostname)
+    _validate_ip_target(normalized_hostname)
 
     try:
         port = parsed.port
