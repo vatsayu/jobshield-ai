@@ -1,9 +1,16 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from backend.app.api.v1.router import api_router
 from backend.app.core.config import get_settings
 from backend.app.core.exceptions import JobShieldException
+from backend.app.core.logging import configure_logging
+from backend.app.core.middleware import RequestIDMiddleware
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -15,17 +22,28 @@ app = FastAPI(
     ),
 )
 
+app.add_middleware(RequestIDMiddleware)
+
 
 @app.exception_handler(JobShieldException)
 async def jobshield_exception_handler(
     request: Request,
     exc: JobShieldException,
 ) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+
+    logger.warning(
+        "Handled application error | error_code=%s | request_id=%s",
+        exc.error_code,
+        request_id,
+    )
+
     return JSONResponse(
         status_code=400,
         content={
             "error": exc.error_code,
             "message": exc.message,
+            "request_id": request_id,
         },
     )
 
