@@ -13,5 +13,6 @@ def health_check() -> HealthResponse:
     return HealthResponse(
         status="ok",
         service=settings.app_name,
-        version="0.1.0",
+        version=settings.app_version,
+        environment=settings.app_env,
     )

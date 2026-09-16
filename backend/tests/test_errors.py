@@ -22,4 +22,5 @@ def test_health_endpoint_still_works() -> None:
         "status": "ok",
         "service": "JobShield AI API",
         "version": "0.1.0",
+        "environment": "development",
     }

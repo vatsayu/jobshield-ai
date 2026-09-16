@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.api.v1.router import api_router
@@ -10,19 +11,28 @@ from backend.app.core.logging import configure_logging
 from backend.app.core.middleware import RequestIDMiddleware
 
 configure_logging()
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version=settings.app_version,
     description=(
-        "AI-assisted recruitment fraud and job security analysis API."
+        "AI-assisted security analysis platform for "
+        "job postings and recruitment communications."
     ),
 )
 
 app.add_middleware(RequestIDMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(JobShieldException)
@@ -46,6 +56,15 @@ async def jobshield_exception_handler(
             "request_id": request_id,
         },
     )
+
+
+@app.get("/", tags=["System"])
+def root() -> dict[str, str]:
+    return {
+        "service": settings.app_name,
+        "version": settings.app_version,
+        "status": "ok",
+    }
 
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
