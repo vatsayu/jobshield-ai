@@ -3,6 +3,8 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+
 
 from backend.app.api.v1.router import api_router
 from backend.app.core.config import get_settings
@@ -33,6 +35,28 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+
+    logger.warning(
+        "Request validation error | request_id=%s | errors=%s",
+        request_id,
+        exc.errors(),
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "VALIDATION_ERROR",
+            "message": "Request data failed validation.",
+            "request_id": request_id,
+        },
+    )
 
 
 @app.exception_handler(JobShieldException)

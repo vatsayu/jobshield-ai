@@ -30,6 +30,9 @@ def test_url_analysis_endpoint_rejects_invalid_url() -> None:
     )
 
     assert response.status_code == 422
+    assert response.json()["error"] == "VALIDATION_ERROR"
+    assert response.json()["message"] == "Request data failed validation."
+    assert response.json()["request_id"]
 
 
 def test_url_analysis_endpoint_rejects_unsupported_scheme() -> None:
@@ -39,3 +42,17 @@ def test_url_analysis_endpoint_rejects_unsupported_scheme() -> None:
     )
 
     assert response.status_code == 422
+    assert response.json()["error"] == "VALIDATION_ERROR"
+    assert response.json()["request_id"]
+
+
+def test_validation_error_preserves_incoming_request_id() -> None:
+    response = client.post(
+        "/api/v1/analyze/url",
+        headers={"X-Request-ID": "validation-test-001"},
+        json={"url": "invalid-url"},
+    )
+
+    assert response.status_code == 422
+    assert response.headers["X-Request-ID"] == "validation-test-001"
+    assert response.json()["request_id"] == "validation-test-001"
