@@ -6,7 +6,9 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 
-from backend.app.api.v1.router import api_router
+from backend.app.api.v1.analyze import router as analyze_router
+from backend.app.api.v1.health import router as health_router
+from backend.app.api.v1.info import router as info_router
 from backend.app.core.config import get_settings
 from backend.app.core.exceptions import JobShieldException
 from backend.app.core.logging import configure_logging
@@ -91,4 +93,17 @@ def root() -> dict[str, str]:
     }
 
 
-app.include_router(api_router, prefix=settings.api_v1_prefix)
+app.include_router(
+    health_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    info_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    analyze_router,
+    prefix=settings.api_v1_prefix,
+)
