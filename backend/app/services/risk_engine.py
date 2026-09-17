@@ -5,6 +5,9 @@ from backend.app.schemas.risk import (
     RiskContribution,
 )
 from backend.app.schemas.signals import URLTechnicalSignals
+from backend.app.services.url_signal_detector import (
+    detect_url_structural_signals,
+)
 
 
 SUSPICIOUS_HOSTNAME_KEYWORDS = {
@@ -146,6 +149,47 @@ def evaluate_url_risk(
             )
         )
         score += 10
+
+    structural_signals = detect_url_structural_signals(signals)
+
+    if "ip_address_hostname" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="ip_address_hostname",
+                points=15,
+                explanation=(
+                    "The URL uses a literal IP address instead "
+                    "of a conventional domain name."
+                ),
+            )
+        )
+        score += 15
+
+    if "excessive_subdomains" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="excessive_subdomains",
+                points=5,
+                explanation=(
+                    "The hostname contains an unusually large "
+                    "number of nested subdomains."
+                ),
+            )
+        )
+        score += 5
+
+    if "long_url" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="long_url",
+                points=5,
+                explanation=(
+                    "The URL is unusually long and may contain "
+                    "complex or obfuscated path/query data."
+                ),
+            )
+        )
+        score += 5
 
     if signals.status_code is not None:
         if 400 <= signals.status_code <= 499:

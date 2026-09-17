@@ -260,3 +260,62 @@ def test_builder_includes_server_error_evidence() -> None:
         item.severity == "high"
         for item in matching_evidence
     )
+
+def test_response_includes_ip_address_hostname_evidence() -> None:
+    signals = build_successful_signals()
+    signals.hostname = "8.8.8.8"
+    signals.normalized_url = "https://8.8.8.8/jobs"
+    signals.final_url = signals.normalized_url
+
+    response = build_url_analysis_response(signals)
+
+    matching = [
+        item
+        for item in response.evidence
+        if item.signal == "ip_address_hostname"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].category == "deterministic_risk"
+    assert matching[0].severity == "high"
+
+
+def test_response_includes_excessive_subdomains_evidence() -> None:
+    signals = build_successful_signals()
+    signals.hostname = "a.b.c.example.com"
+    signals.normalized_url = (
+        "https://a.b.c.example.com/jobs"
+    )
+    signals.final_url = signals.normalized_url
+
+    response = build_url_analysis_response(signals)
+
+    matching = [
+        item
+        for item in response.evidence
+        if item.signal == "excessive_subdomains"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].category == "deterministic_risk"
+    assert matching[0].severity == "medium"
+
+
+def test_response_includes_long_url_evidence() -> None:
+    long_url = "https://example.com/" + ("x" * 130)
+
+    signals = build_successful_signals()
+    signals.normalized_url = long_url
+    signals.final_url = long_url
+
+    response = build_url_analysis_response(signals)
+
+    matching = [
+        item
+        for item in response.evidence
+        if item.signal == "long_url"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].category == "deterministic_risk"
+    assert matching[0].severity == "medium"
