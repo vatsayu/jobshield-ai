@@ -4,6 +4,7 @@ from backend.app.schemas.analysis import (
     AnalysisResponse,
     MessageAnalysisRequest,
     URLAnalysisRequest,
+    EmailAnalysisRequest,
 )
 from backend.app.services.analysis_response_builder import (
     build_url_analysis_response,
