@@ -2,10 +2,14 @@ from fastapi import APIRouter, HTTPException, status
 
 from backend.app.schemas.analysis import (
     AnalysisResponse,
+    MessageAnalysisRequest,
     URLAnalysisRequest,
 )
 from backend.app.services.analysis_response_builder import (
     build_url_analysis_response,
+)
+from backend.app.services.message_analysis_response_builder import (
+    build_message_analysis_response,
 )
 from backend.app.services.url_analyzer import URLAnalyzer
 from backend.app.services.url_normalizer import URLNormalizationError
@@ -34,3 +38,14 @@ def analyze_url(request: URLAnalysisRequest) -> AnalysisResponse:
         ) from exc
 
     return build_url_analysis_response(technical_signals)
+
+
+@router.post(
+    "/message",
+    response_model=AnalysisResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def analyze_message(
+    request: MessageAnalysisRequest,
+) -> AnalysisResponse:
+    return build_message_analysis_response(request.message)
