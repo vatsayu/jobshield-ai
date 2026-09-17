@@ -21,6 +21,15 @@ class URLAnalysisRequest(BaseModel):
     )
 
 
+class MessageAnalysisRequest(BaseModel):
+    message: str = Field(
+        ...,
+        min_length=10,
+        max_length=20_000,
+        description="Recruitment-related message text to analyze.",
+    )
+
+
 class EvidenceItem(BaseModel):
     category: str
     signal: str
