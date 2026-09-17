@@ -136,3 +136,128 @@ def test_builder_includes_deterministic_risk_evidence() -> None:
     assert "non_standard_port" in evidence_signals
     assert "multiple_redirects" in evidence_signals
     assert "server_error_response" in evidence_signals
+
+
+def test_builder_includes_https_evidence() -> None:
+    response = build_url_analysis_response(
+        build_successful_signals()
+    )
+
+    evidence = {
+        item.signal: item
+        for item in response.evidence
+    }
+
+    assert "https_enabled" in evidence
+    assert (
+        evidence["https_enabled"].category
+        == "transport_security"
+    )
+    assert (
+        evidence["https_enabled"].severity
+        == "unknown"
+    )
+
+
+def test_builder_includes_missing_https_evidence() -> None:
+    signals = build_successful_signals()
+    signals.normalized_url = "http://example.com/jobs"
+    signals.scheme = "http"
+    signals.has_https = False
+
+    response = build_url_analysis_response(signals)
+
+    evidence = {
+        item.signal: item
+        for item in response.evidence
+    }
+
+    assert "https_missing" in evidence
+    assert (
+        evidence["https_missing"].category
+        == "transport_security"
+    )
+    assert (
+        evidence["https_missing"].severity
+        == "medium"
+    )
+
+
+def test_builder_includes_non_standard_port_evidence() -> None:
+    signals = build_successful_signals()
+    signals.port = 8080
+
+    response = build_url_analysis_response(signals)
+
+    evidence_signals = [
+        item.signal for item in response.evidence
+    ]
+
+    assert "non_standard_port" in evidence_signals
+
+
+def test_builder_includes_successful_http_status_evidence() -> None:
+    response = build_url_analysis_response(
+        build_successful_signals()
+    )
+
+    evidence = {
+        item.signal: item
+        for item in response.evidence
+    }
+
+    assert "successful_http_response" in evidence
+    assert (
+        evidence["successful_http_response"].category
+        == "http_response"
+    )
+    assert (
+        evidence["successful_http_response"].severity
+        == "unknown"
+    )
+
+
+def test_builder_includes_client_error_evidence() -> None:
+    signals = build_successful_signals()
+    signals.status_code = 404
+
+    response = build_url_analysis_response(signals)
+
+    matching_evidence = [
+        item
+        for item in response.evidence
+        if item.signal == "client_error_response"
+    ]
+
+    assert matching_evidence
+    assert any(
+        item.category == "http_response"
+        for item in matching_evidence
+    )
+    assert any(
+        item.severity == "medium"
+        for item in matching_evidence
+    )
+
+
+def test_builder_includes_server_error_evidence() -> None:
+    signals = build_successful_signals()
+    signals.status_code = 503
+
+    response = build_url_analysis_response(signals)
+
+    matching_evidence = [
+        item
+        for item in response.evidence
+        if item.signal == "server_error_response"
+    ]
+
+    assert matching_evidence
+    assert any(
+        item.category == "http_response"
+        for item in matching_evidence
+    )
+    assert any(
+        item.severity == "high"
+        for item in matching_evidence
+    )

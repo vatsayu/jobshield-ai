@@ -10,6 +10,94 @@ from backend.app.schemas.signals import URLTechnicalSignals
 from backend.app.services.risk_engine import evaluate_url_risk
 
 
+def _build_technical_evidence(
+    signals: URLTechnicalSignals,
+) -> list[EvidenceItem]:
+    evidence: list[EvidenceItem] = []
+
+    # Transport security evidence
+    if signals.has_https:
+        evidence.append(
+            EvidenceItem(
+                category="transport_security",
+                signal="https_enabled",
+                explanation=(
+                    "The URL uses HTTPS for transport encryption."
+                ),
+                severity="unknown",
+            )
+        )
+    else:
+        evidence.append(
+            EvidenceItem(
+                category="transport_security",
+                signal="https_missing",
+                explanation=(
+                    "The URL uses HTTP rather than HTTPS. "
+                    "Transport encryption is not verified."
+                ),
+                severity="medium",
+            )
+        )
+
+    # Non-standard port evidence
+    if signals.port is not None:
+        evidence.append(
+            EvidenceItem(
+                category="network",
+                signal="non_standard_port",
+                explanation=(
+                    f"The URL uses non-default port "
+                    f"{signals.port}."
+                ),
+                severity="medium",
+            )
+        )
+
+    # HTTP response evidence
+    if signals.status_code is not None:
+        if 200 <= signals.status_code <= 299:
+            evidence.append(
+                EvidenceItem(
+                    category="http_response",
+                    signal="successful_http_response",
+                    explanation=(
+                        f"The server returned HTTP status "
+                        f"{signals.status_code}."
+                    ),
+                    severity="unknown",
+                )
+            )
+
+        elif 400 <= signals.status_code <= 499:
+            evidence.append(
+                EvidenceItem(
+                    category="http_response",
+                    signal="client_error_response",
+                    explanation=(
+                        f"The server returned client-error "
+                        f"HTTP status {signals.status_code}."
+                    ),
+                    severity="medium",
+                )
+            )
+
+        elif 500 <= signals.status_code <= 599:
+            evidence.append(
+                EvidenceItem(
+                    category="http_response",
+                    signal="server_error_response",
+                    explanation=(
+                        f"The server returned server-error "
+                        f"HTTP status {signals.status_code}."
+                    ),
+                    severity="high",
+                )
+            )
+
+    return evidence
+
+
 def build_url_analysis_response(
     signals: URLTechnicalSignals,
 ) -> AnalysisResponse:
@@ -25,6 +113,11 @@ def build_url_analysis_response(
             severity="unknown",
         )
     ]
+
+    # Add technical evidence
+    evidence.extend(
+        _build_technical_evidence(signals)
+    )
 
     recommended_actions: list[str] = [
         "Do not share sensitive information until the "
@@ -64,7 +157,8 @@ def build_url_analysis_response(
                     category="http_fetch",
                     signal="redirects",
                     explanation=(
-                        f"URL followed {signals.redirect_count} "
+                        f"URL followed "
+                        f"{signals.redirect_count} "
                         "validated redirect(s)."
                     ),
                     severity="unknown",
@@ -74,8 +168,8 @@ def build_url_analysis_response(
         summary = (
             "The URL was technically reachable and "
             "deterministic risk indicators were evaluated. "
-            "This is not proof that the job posting or "
-            "recruiter is legitimate."
+            "This is not proof that the job posting or recruiter "
+            "is legitimate."
         )
 
         if risk_assessment.risk_score > 0:
@@ -123,6 +217,7 @@ def build_url_analysis_response(
             "assessment."
         )
 
+    # Add deterministic risk contributions
     for contribution in risk_assessment.contributions:
         evidence.append(
             EvidenceItem(
