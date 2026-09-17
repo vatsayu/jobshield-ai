@@ -239,3 +239,23 @@ def test_suspicious_tld_adds_risk_points() -> None:
 
     assert len(matching) == 1
     assert matching[0].points == 5
+
+def test_suspicious_encoding_adds_risk_points() -> None:
+    signals = build_signals(
+        hostname="example.com",
+        normalized_url="https://example.com/%41%42%43%44",
+    )
+
+    assessment = evaluate_url_risk(signals)
+
+    assert assessment.risk_score == 5
+    assert assessment.risk_category == "low"
+
+    matching = [
+        contribution
+        for contribution in assessment.contributions
+        if contribution.signal == "suspicious_encoding"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].points == 5

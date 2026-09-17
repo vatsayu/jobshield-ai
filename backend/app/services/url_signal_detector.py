@@ -57,6 +57,28 @@ def has_long_url(
     return len(normalized_url) > maximum_length
 
 
+def has_suspicious_encoding(normalized_url: str) -> bool:
+    """
+    Detect excessive or suspicious percent-encoding in a URL.
+
+    This is a heuristic signal only. Percent-encoding is legitimate in
+    many URLs, so this function should not independently imply maliciousness.
+    """
+    encoded_markers = normalized_url.lower().count("%")
+
+    if encoded_markers >= 4:
+        return True
+
+    suspicious_sequences = (
+        "%2f",  # /
+        "%5c",  # \
+        "%2e",  # .
+        "%25",  # encoded %
+    )
+
+    return any(sequence in normalized_url.lower() for sequence in suspicious_sequences)
+
+
 def has_suspicious_tld(hostname: str) -> bool:
     """
     Return True when the hostname ends with a TLD that warrants
@@ -74,11 +96,8 @@ def has_suspicious_tld(hostname: str) -> bool:
     return labels[-1] in SUSPICIOUS_TLDS
 
 
-def detect_url_structural_signals(
-    signals: URLTechnicalSignals,
-) -> list[str]:
-    """Detect deterministic structural URL indicators."""
-    detected: list[str] = []
+def detect_url_structural_signals(signals: URLTechnicalSignals) -> list[str]:
+    detected = []
 
     if is_ip_address_hostname(signals.hostname):
         detected.append("ip_address_hostname")
@@ -91,5 +110,8 @@ def detect_url_structural_signals(
 
     if has_suspicious_tld(signals.hostname):
         detected.append("suspicious_tld")
+
+    if has_suspicious_encoding(signals.normalized_url):
+        detected.append("suspicious_encoding")
 
     return detected

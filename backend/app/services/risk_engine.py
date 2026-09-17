@@ -205,6 +205,21 @@ def evaluate_url_risk(
         )
         score += 5
 
+    if "suspicious_encoding" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="suspicious_encoding",
+                points=5,
+                explanation=(
+                    "The URL contains percent-encoded or obfuscated "
+                    "characters that make the destination harder to inspect. "
+                    "This is a heuristic indicator and does not alone establish "
+                    "malicious activity."
+                ),
+            )
+        )
+        score += 5
+
     if signals.status_code is not None:
         if 400 <= signals.status_code <= 499:
             contributions.append(

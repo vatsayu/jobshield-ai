@@ -117,3 +117,35 @@ def test_suspicious_tld_is_detected_structurally() -> None:
     detected = detect_url_structural_signals(signals)
 
     assert detected == ["suspicious_tld"]
+
+def test_detects_suspicious_url_encoding() -> None:
+    from backend.app.services.url_signal_detector import has_suspicious_encoding
+
+    assert has_suspicious_encoding("https://example.com/%2Flogin") is True
+    assert has_suspicious_encoding("https://example.com/%252e%252e%252f") is True
+
+
+def test_detects_excessive_percent_encoding() -> None:
+    from backend.app.services.url_signal_detector import has_suspicious_encoding
+
+    url = "https://example.com/path/%41/%42/%43/%44"
+
+    assert has_suspicious_encoding(url) is True
+
+
+def test_allows_normal_url_encoding() -> None:
+    from backend.app.services.url_signal_detector import has_suspicious_encoding
+
+    assert has_suspicious_encoding("https://example.com/jobs?id=123") is False
+    assert has_suspicious_encoding("https://example.com/careers") is False
+
+
+def test_suspicious_encoding_is_detected_structurally() -> None:
+    signals = build_signals(
+        hostname="example.com",
+        normalized_url="https://example.com/%2Flogin",
+    )
+
+    detected = detect_url_structural_signals(signals)
+
+    assert detected == ["suspicious_encoding"]
