@@ -45,7 +45,7 @@ def _build_technical_evidence(
         evidence.append(
             EvidenceItem(
                 category="network",
-                signal="non_standard_port",
+                signal="port_non_standard",
                 explanation=(
                     f"The URL uses non-default port "
                     f"{signals.port}."
@@ -73,7 +73,7 @@ def _build_technical_evidence(
             evidence.append(
                 EvidenceItem(
                     category="http_response",
-                    signal="client_error_response",
+                    signal="http_status_4xx",
                     explanation=(
                         f"The server returned client-error "
                         f"HTTP status {signals.status_code}."
@@ -86,7 +86,7 @@ def _build_technical_evidence(
             evidence.append(
                 EvidenceItem(
                     category="http_response",
-                    signal="server_error_response",
+                    signal="http_status_5xx",
                     explanation=(
                         f"The server returned server-error "
                         f"HTTP status {signals.status_code}."

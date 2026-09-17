@@ -226,7 +226,7 @@ def test_builder_includes_client_error_evidence() -> None:
     matching_evidence = [
         item
         for item in response.evidence
-        if item.signal == "client_error_response"
+        if item.signal == "http_status_4xx"
     ]
 
     assert matching_evidence
@@ -239,7 +239,6 @@ def test_builder_includes_client_error_evidence() -> None:
         for item in matching_evidence
     )
 
-
 def test_builder_includes_server_error_evidence() -> None:
     signals = build_successful_signals()
     signals.status_code = 503
@@ -249,7 +248,7 @@ def test_builder_includes_server_error_evidence() -> None:
     matching_evidence = [
         item
         for item in response.evidence
-        if item.signal == "server_error_response"
+        if item.signal == "http_status_5xx"
     ]
 
     assert matching_evidence
