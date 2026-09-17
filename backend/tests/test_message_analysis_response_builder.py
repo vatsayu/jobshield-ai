@@ -52,16 +52,20 @@ def test_builder_includes_document_evidence() -> None:
     assert "identity_document_request" in signals
 
 
-def test_builder_includes_deterministic_risk_evidence() -> None:
+def test_builder_includes_signal_evidence_without_duplicates() -> None:
     response = build_message_analysis_response(
         "Pay the registration fee urgently."
     )
 
-    assert any(
-        item.category == "deterministic_risk"
+    payment_items = [
+        item
         for item in response.evidence
-    )
+        if item.signal == "payment_request"
+    ]
 
+    assert len(payment_items) == 1
+    assert payment_items[0].category == "financial_request"
+    assert response.risk_score >= 35
 
 def test_clean_message_has_low_risk() -> None:
     response = build_message_analysis_response(

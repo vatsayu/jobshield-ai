@@ -107,7 +107,8 @@ def _find_payment_matches(text: str) -> list[str]:
     currency_payment_patterns = (
         r"\bpay\s+(?:₹|rs\.?|inr|\$|usd)\s*[\d,]+(?:\.\d+)?",
         r"(?:₹|rs\.?|inr|\$|usd)\s*[\d,]+(?:\.\d+)?",
-        r"\b(?:pay|payment|transfer|send)\b.{0,40}\b(?:registration|interview|joining|job|selection)\b",
+        r"\b(?:pay|payment|transfer|send)\b.{0,40}\b"
+        r"(?:registration|interview|joining|job|selection)\b",
     )
 
     for pattern in currency_payment_patterns:
@@ -117,7 +118,18 @@ def _find_payment_matches(text: str) -> list[str]:
             if cleaned_match and cleaned_match not in matches:
                 matches.append(cleaned_match)
 
-    return matches
+    # Remove duplicate and overlapping matches, keeping the most
+    # descriptive/longest match.
+    unique_matches = list(set(matches))
+    unique_matches.sort(key=len, reverse=True)
+
+    filtered_matches: list[str] = []
+
+    for match in unique_matches:
+        if not any(match in existing for existing in filtered_matches):
+            filtered_matches.append(match)
+
+    return filtered_matches
 
 
 def detect_message_signals(message: str) -> list[MessageSignal]:

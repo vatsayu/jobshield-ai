@@ -46,24 +46,9 @@ def build_message_analysis_response(
         _signal_to_evidence(signal)
         for signal in signals
     )
-
-    for contribution in risk_assessment.contributions:
-        evidence.append(
-            EvidenceItem(
-                category="deterministic_risk",
-                signal=contribution.signal,
-                explanation=contribution.explanation,
-                severity=(
-                    "critical"
-                    if contribution.points >= 45
-                    else "high"
-                    if contribution.points >= 25
-                    else "medium"
-                    if contribution.points >= 15
-                    else "low"
-                ),
-            )
-        )
+    # Risk contributions are already represented by the detected signal
+    # evidence above. Do not append them again, otherwise the UI displays
+    # duplicate evidence items.
 
     if signals:
         summary = (
