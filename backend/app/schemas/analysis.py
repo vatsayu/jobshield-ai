@@ -29,6 +29,31 @@ class MessageAnalysisRequest(BaseModel):
         description="Recruitment-related message text to analyze.",
     )
 
+    
+class EmailAnalysisRequest(BaseModel):
+    subject: str = Field(
+        default="",
+        max_length=500,
+        description="Email subject line.",
+    )
+    sender: str = Field(
+        default="",
+        max_length=320,
+        description="Sender email address.",
+    )
+    reply_to: str = Field(
+        default="",
+        max_length=320,
+        description="Reply-To email address.",
+    )
+    body: str = Field(
+        ...,
+        min_length=10,
+        max_length=30_000,
+        description="Recruitment-related email body text.",
+    )
+
+
 
 class EvidenceItem(BaseModel):
     category: str
