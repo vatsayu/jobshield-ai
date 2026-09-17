@@ -89,3 +89,31 @@ def test_detects_ip_hostname_structural_signal() -> None:
     detected = detect_url_structural_signals(signals)
 
     assert detected == ["ip_address_hostname"]
+
+def test_detects_suspicious_tld() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_suspicious_tld,
+    )
+
+    assert has_suspicious_tld("example.xyz") is True
+    assert has_suspicious_tld("example.top") is True
+
+
+def test_allows_common_tld() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_suspicious_tld,
+    )
+
+    assert has_suspicious_tld("example.com") is False
+    assert has_suspicious_tld("example.org") is False
+
+
+def test_suspicious_tld_is_detected_structurally() -> None:
+    signals = build_signals(
+        hostname="jobs.example.xyz",
+        normalized_url="https://jobs.example.xyz/jobs",
+    )
+
+    detected = detect_url_structural_signals(signals)
+
+    assert detected == ["suspicious_tld"]

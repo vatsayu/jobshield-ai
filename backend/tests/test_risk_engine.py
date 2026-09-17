@@ -219,3 +219,23 @@ def test_score_is_capped_at_one_hundred() -> None:
     )
 
     assert 0 <= result.risk_score <= 100
+
+def test_suspicious_tld_adds_risk_points() -> None:
+    signals = build_signals(
+        hostname="jobs.example.xyz",
+        normalized_url="https://jobs.example.xyz/jobs",
+    )
+
+    assessment = evaluate_url_risk(signals)
+
+    assert assessment.risk_score == 5
+    assert assessment.risk_category == "low"
+
+    matching = [
+        contribution
+        for contribution in assessment.contributions
+        if contribution.signal == "suspicious_tld"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].points == 5

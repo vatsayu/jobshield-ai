@@ -191,6 +191,20 @@ def evaluate_url_risk(
         )
         score += 5
 
+    if "suspicious_tld" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="suspicious_tld",
+                points=5,
+                explanation=(
+                    "The domain uses a top-level domain that "
+                    "warrants additional verification. This alone "
+                    "does not establish malicious activity."
+                ),
+            )
+        )
+        score += 5
+
     if signals.status_code is not None:
         if 400 <= signals.status_code <= 499:
             contributions.append(

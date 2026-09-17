@@ -5,6 +5,16 @@ from ipaddress import ip_address
 from backend.app.schemas.signals import URLTechnicalSignals
 
 
+SUSPICIOUS_TLDS = {
+    "buzz",
+    "click",
+    "icu",
+    "top",
+    "work",
+    "xyz",
+}
+
+
 def is_ip_address_hostname(hostname: str) -> bool:
     """Return True when the hostname is a literal IP address."""
     try:
@@ -47,6 +57,23 @@ def has_long_url(
     return len(normalized_url) > maximum_length
 
 
+def has_suspicious_tld(hostname: str) -> bool:
+    """
+    Return True when the hostname ends with a TLD that warrants
+    additional review.
+
+    A suspicious TLD is only a contextual indicator and does not
+    establish that a domain is malicious or fraudulent.
+    """
+    normalized_hostname = hostname.lower().rstrip(".")
+    labels = normalized_hostname.split(".")
+
+    if len(labels) < 2:
+        return False
+
+    return labels[-1] in SUSPICIOUS_TLDS
+
+
 def detect_url_structural_signals(
     signals: URLTechnicalSignals,
 ) -> list[str]:
@@ -61,5 +88,8 @@ def detect_url_structural_signals(
 
     if has_long_url(signals.normalized_url):
         detected.append("long_url")
+
+    if has_suspicious_tld(signals.hostname):
+        detected.append("suspicious_tld")
 
     return detected
