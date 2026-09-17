@@ -34,6 +34,18 @@ def test_payment_request_adds_high_risk_points() -> None:
         for item in assessment.contributions
     )
 
+def test_currency_payment_request_is_scored() -> None:
+    assessment = assess(
+        "Congratulations, you have been selected. "
+        "Pay ₹2,000 for registration before your interview."
+    )
+
+    assert assessment.risk_score >= 35
+    assert assessment.risk_category == "medium"
+    assert any(
+        item.signal == "payment_request"
+        for item in assessment.contributions
+    )
 
 def test_credential_request_is_high_impact() -> None:
     assessment = assess(

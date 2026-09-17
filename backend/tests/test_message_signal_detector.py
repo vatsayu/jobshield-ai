@@ -17,6 +17,14 @@ def test_detects_payment_request() -> None:
 
     assert "payment_request" in signals
 
+def test_detects_currency_payment_for_registration() -> None:
+    signals = signals_by_name(
+        "Congratulations, you have been selected. "
+        "Pay ₹2,000 for registration before your interview."
+    )
+
+    assert "payment_request" in signals
+
 
 def test_detects_credential_request() -> None:
     signals = signals_by_name(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -24,6 +25,15 @@ PAYMENT_PATTERNS = (
     "training fee",
     "joining fee",
     "verification fee",
+    "pay for registration",
+    "registration payment",
+    "registration charge",
+    "registration amount",
+    "pay before your interview",
+    "pay before interview",
+    "payment before interview",
+    "pay rs",
+    "pay inr",
 )
 
 CREDENTIAL_PATTERNS = (
@@ -91,6 +101,24 @@ def _find_matches(
 ) -> list[str]:
     return [pattern for pattern in patterns if pattern in text]
 
+def _find_payment_matches(text: str) -> list[str]:
+    matches = _find_matches(text, PAYMENT_PATTERNS)
+
+    currency_payment_patterns = (
+        r"\bpay\s+(?:₹|rs\.?|inr|\$|usd)\s*[\d,]+(?:\.\d+)?",
+        r"(?:₹|rs\.?|inr|\$|usd)\s*[\d,]+(?:\.\d+)?",
+        r"\b(?:pay|payment|transfer|send)\b.{0,40}\b(?:registration|interview|joining|job|selection)\b",
+    )
+
+    for pattern in currency_payment_patterns:
+        for match in re.findall(pattern, text, flags=re.IGNORECASE):
+            cleaned_match = " ".join(match.split())
+
+            if cleaned_match and cleaned_match not in matches:
+                matches.append(cleaned_match)
+
+    return matches
+
 
 def detect_message_signals(message: str) -> list[MessageSignal]:
     """
@@ -102,7 +130,7 @@ def detect_message_signals(message: str) -> list[MessageSignal]:
     normalized = " ".join(message.lower().split())
     signals: list[MessageSignal] = []
 
-    payment_matches = _find_matches(normalized, PAYMENT_PATTERNS)
+    payment_matches = _find_payment_matches(normalized)
     if payment_matches:
         signals.append(
             MessageSignal(
