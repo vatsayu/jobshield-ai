@@ -6,6 +6,9 @@ from backend.app.schemas.analysis import (
     URLAnalysisRequest,
     EmailAnalysisRequest,
 )
+from backend.app.services.email_analysis_response_builder import (
+    build_email_analysis_response,
+)
 from backend.app.services.analysis_response_builder import (
     build_url_analysis_response,
 )
@@ -50,3 +53,16 @@ def analyze_message(
     request: MessageAnalysisRequest,
 ) -> AnalysisResponse:
     return build_message_analysis_response(request.message)
+    
+@router.post(
+    "/email",
+    response_model=AnalysisResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def analyze_email(request: EmailAnalysisRequest) -> AnalysisResponse:
+    return build_email_analysis_response(
+        subject=request.subject,
+        sender=request.sender,
+        reply_to=request.reply_to,
+        body=request.body,
+    )
