@@ -10,12 +10,38 @@ client = TestClient(app)
 
 
 def test_url_analysis_endpoint_accepts_valid_url() -> None:
-    response = client.post(
-        "/api/v1/analyze/url",
-        json={
-            "url": "https://example.com/jobs/security-analyst"
-        },
+    signals = URLTechnicalSignals(
+        normalized_url="https://example.com/jobs/security-analyst",
+        hostname="example.com",
+        scheme="https",
+        port=None,
+        has_https=True,
+        redirect_count=0,
+        final_url=(
+            "https://example.com/jobs/security-analyst"
+        ),
+        status_code=200,
+        content_type="text/html",
+        content_length=128,
+        response_size_bytes=128,
+        fetch_status="success",
+        fetch_error=None,
+        domain_age_days=None,
+        suspicious_keywords=[],
     )
+
+    with patch(
+        "backend.app.api.v1.analyze.url_analyzer.analyze",
+        return_value=signals,
+    ):
+        response = client.post(
+            "/api/v1/analyze/url",
+            json={
+                "url": (
+                    "https://example.com/jobs/security-analyst"
+                )
+            },
+        )
 
     assert response.status_code == 202
 
@@ -23,7 +49,7 @@ def test_url_analysis_endpoint_accepts_valid_url() -> None:
 
     assert body["analysis_type"] == "url"
     assert body["status"] == "completed"
-    assert body["risk_category"] == "unknown"
+    assert body["risk_category"] == "low"
     assert body["risk_score"] == 0
     assert body["analysis_id"]
     assert body["summary"]
@@ -164,7 +190,7 @@ def test_url_analysis_endpoint_returns_fetch_success_evidence() -> None:
 
     assert body["analysis_type"] == "url"
     assert body["status"] == "completed"
-    assert body["risk_category"] == "unknown"
+    assert body["risk_category"] == "low"
     assert body["risk_score"] == 0
     assert body["summary"]
 

@@ -7,11 +7,14 @@ from backend.app.schemas.analysis import (
     EvidenceItem,
 )
 from backend.app.schemas.signals import URLTechnicalSignals
+from backend.app.services.risk_engine import evaluate_url_risk
 
 
 def build_url_analysis_response(
     signals: URLTechnicalSignals,
 ) -> AnalysisResponse:
+    risk_assessment = evaluate_url_risk(signals)
+
     evidence: list[EvidenceItem] = [
         EvidenceItem(
             category="url_validation",
@@ -69,10 +72,21 @@ def build_url_analysis_response(
             )
 
         summary = (
-            "The URL passed deterministic validation and returned "
-            "an HTTP response. This is not proof that the job "
-            "posting or recruiter is legitimate."
+            "The URL was technically reachable and "
+            "deterministic risk indicators were evaluated. "
+            "This is not proof that the job posting or "
+            "recruiter is legitimate."
         )
+
+        if risk_assessment.risk_score > 0:
+            recommended_actions.extend(
+                [
+                    "Review each listed technical risk indicator "
+                    "before proceeding.",
+                    "Verify the employer and recruiter through "
+                    "independent trusted sources.",
+                ]
+            )
 
     elif signals.fetch_status == "failed":
         evidence.append(
@@ -95,10 +109,10 @@ def build_url_analysis_response(
 
         recommended_actions.extend(
             [
-                "Verify the domain through an independent trusted "
-                "source.",
-                "Do not download files or submit personal documents "
-                "from this URL yet.",
+                "Verify the domain through an independent "
+                "trusted source.",
+                "Do not download files or submit personal "
+                "documents from this URL yet.",
             ]
         )
 
@@ -109,12 +123,26 @@ def build_url_analysis_response(
             "assessment."
         )
 
+    for contribution in risk_assessment.contributions:
+        evidence.append(
+            EvidenceItem(
+                category="deterministic_risk",
+                signal=contribution.signal,
+                explanation=contribution.explanation,
+                severity=(
+                    "high"
+                    if contribution.points >= 15
+                    else "medium"
+                ),
+            )
+        )
+
     return AnalysisResponse(
         analysis_id=str(uuid4()),
         analysis_type="url",
         status="completed",
-        risk_category="unknown",
-        risk_score=0,
+        risk_category=risk_assessment.risk_category,
+        risk_score=risk_assessment.risk_score,
         summary=summary,
         evidence=evidence,
         recommended_actions=recommended_actions,

@@ -26,7 +26,9 @@ def build_successful_signals() -> URLTechnicalSignals:
 
 def build_failed_signals() -> URLTechnicalSignals:
     return URLTechnicalSignals(
-        normalized_url="https://unreachable-example.com/jobs",
+        normalized_url=(
+            "https://unreachable-example.com/jobs"
+        ),
         hostname="unreachable-example.com",
         scheme="https",
         port=None,
@@ -38,7 +40,9 @@ def build_failed_signals() -> URLTechnicalSignals:
         content_length=None,
         response_size_bytes=0,
         fetch_status="failed",
-        fetch_error="Unable to resolve the URL hostname.",
+        fetch_error=(
+            "Unable to resolve the URL hostname."
+        ),
         domain_age_days=None,
         suspicious_keywords=[],
     )
@@ -51,11 +55,14 @@ def test_builder_creates_response_for_successful_fetch() -> None:
 
     assert response.analysis_type == "url"
     assert response.status == "completed"
-    assert response.risk_category == "unknown"
+    assert response.risk_category == "low"
     assert response.risk_score == 0
-    assert "HTTP response" in response.summary
+    assert "technically reachable" in response.summary
+    assert "deterministic risk indicators" in response.summary
 
-    signals = [item.signal for item in response.evidence]
+    signals = [
+        item.signal for item in response.evidence
+    ]
 
     assert "normalized_url" in signals
     assert "response_received" in signals
@@ -73,7 +80,9 @@ def test_builder_creates_response_for_failed_fetch() -> None:
     assert response.risk_score == 0
     assert "insufficient evidence" in response.summary
 
-    signals = [item.signal for item in response.evidence]
+    signals = [
+        item.signal for item in response.evidence
+    ]
 
     assert "normalized_url" in signals
     assert "fetch_failed" in signals
@@ -95,3 +104,35 @@ def test_builder_includes_redirect_evidence() -> None:
     ]
 
     assert "redirects" in evidence_signals
+
+
+def test_builder_includes_deterministic_risk_evidence() -> None:
+    signals = build_successful_signals()
+
+    signals.normalized_url = (
+        "http://secure-login.example.com:8080/payment"
+    )
+    signals.hostname = "secure-login.example.com"
+    signals.scheme = "http"
+    signals.port = 8080
+    signals.has_https = False
+    signals.redirect_count = 3
+    signals.status_code = 503
+
+    response = build_url_analysis_response(signals)
+
+    assert response.risk_score > 0
+    assert response.risk_category in {
+        "medium",
+        "high",
+        "critical",
+    }
+
+    evidence_signals = [
+        item.signal for item in response.evidence
+    ]
+
+    assert "missing_https" in evidence_signals
+    assert "non_standard_port" in evidence_signals
+    assert "multiple_redirects" in evidence_signals
+    assert "server_error_response" in evidence_signals
