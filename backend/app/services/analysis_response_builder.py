@@ -217,7 +217,7 @@ def build_url_analysis_response(
             "assessment."
         )
 
-    # Add deterministic risk contributions
+    # Add deterministic risk contributions as user-visible evidence.
     for contribution in risk_assessment.contributions:
         evidence.append(
             EvidenceItem(
