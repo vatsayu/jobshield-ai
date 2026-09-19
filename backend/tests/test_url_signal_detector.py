@@ -246,12 +246,47 @@ def test_allows_normal_hyphenated_hostname() -> None:
 
 def test_hyphenated_hostname_abuse_is_detected_structurally() -> None:
     signals = build_signals(
-        hostname="secure-job-verify-account-login.example.com",
+        hostname="a-b-c-d-e.example.com",
+        normalized_url="https://a-b-c-d-e.example.com/jobs",
+    )
+
+    detected = detect_url_structural_signals(signals)
+
+    assert "hyphenated_hostname_abuse" in detected
+    assert "long_hostname_label" not in detected
+
+def test_detects_long_hostname_label() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_long_hostname_label,
+    )
+
+    hostname = (
+        "this-is-a-very-long-hostname-label-example.example.com"
+    )
+
+    assert has_long_hostname_label(hostname) is True
+
+
+def test_allows_normal_hostname_labels() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_long_hostname_label,
+    )
+
+    assert has_long_hostname_label(
+        "jobs.example.com"
+    ) is False
+
+
+def test_long_hostname_label_is_detected_structurally() -> None:
+    signals = build_signals(
+        hostname=(
+            "this-is-a-very-long-hostname-label-example.example.com"
+        ),
         normalized_url=(
-            "https://secure-job-verify-account-login.example.com/jobs"
+            "https://this-is-a-very-long-hostname-label-example.example.com/jobs"
         ),
     )
 
     detected = detect_url_structural_signals(signals)
 
-    assert detected == ["hyphenated_hostname_abuse"]
+    assert "long_hostname_label" in detected

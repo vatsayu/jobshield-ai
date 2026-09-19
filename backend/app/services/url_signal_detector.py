@@ -130,6 +130,29 @@ def has_hyphenated_hostname_abuse(
     return hostname.count("-") > maximum_hyphens
 
 
+def has_long_hostname_label(
+    hostname: str,
+    *,
+    maximum_length: int = 30,
+) -> bool:
+    """
+    Return True when an individual hostname label is unusually long.
+
+    This is a heuristic indicator only and does not establish
+    malicious activity.
+    """
+    labels = [
+        label
+        for label in hostname.split(".")
+        if label
+    ]
+
+    return any(
+        len(label) > maximum_length
+        for label in labels
+    )
+
+
 def detect_url_structural_signals(
     signals: URLTechnicalSignals,
 ) -> list[str]:
@@ -155,5 +178,8 @@ def detect_url_structural_signals(
 
     if has_hyphenated_hostname_abuse(signals.hostname):
         detected.append("hyphenated_hostname_abuse")
+
+    if has_long_hostname_label(signals.hostname):
+        detected.append("long_hostname_label")
 
     return detected

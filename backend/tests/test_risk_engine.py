@@ -301,3 +301,25 @@ def test_hyphenated_hostname_abuse_adds_risk_points() -> None:
 
     assert len(matching) == 1
     assert matching[0].points == 5
+
+def test_long_hostname_label_adds_risk_points() -> None:
+    signals = build_signals(
+        hostname="abcdefghijklmnopqrstuvwxyz12345.example.com",
+        normalized_url=(
+            "https://abcdefghijklmnopqrstuvwxyz12345.example.com/jobs"
+        ),
+    )
+
+    assessment = evaluate_url_risk(signals)
+
+    assert assessment.risk_score == 5
+    assert assessment.risk_category == "low"
+
+    matching = [
+        contribution
+        for contribution in assessment.contributions
+        if contribution.signal == "long_hostname_label"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].points == 5

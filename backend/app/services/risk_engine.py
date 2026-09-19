@@ -247,6 +247,21 @@ def evaluate_url_risk(
             )
         )
         score += 5
+    
+    if "long_hostname_label" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="long_hostname_label",
+                points=5,
+                explanation=(
+                    "The hostname contains an unusually long individual "
+                    "label, which can make the domain harder to inspect. "
+                    "This is a heuristic indicator and does not alone "
+                    "establish malicious activity."
+                ),
+            )
+        )
+        score += 5
 
     if signals.status_code is not None:
         if 400 <= signals.status_code <= 499:
