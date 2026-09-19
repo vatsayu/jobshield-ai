@@ -219,6 +219,20 @@ def evaluate_url_risk(
             )
         )
         score += 5
+    if "userinfo_in_url" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="userinfo_in_url",
+                points=10,
+                explanation=(
+                    "The URL contains embedded user information before "
+                    "the hostname, which can make the destination harder "
+                    "to interpret. This is a heuristic indicator and does "
+                    "not alone establish malicious activity."
+                ),
+            )
+        )
+        score += 10
 
     if signals.status_code is not None:
         if 400 <= signals.status_code <= 499:

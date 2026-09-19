@@ -78,6 +78,17 @@ def has_suspicious_encoding(normalized_url: str) -> bool:
 
     return any(sequence in normalized_url.lower() for sequence in suspicious_sequences)
 
+def has_userinfo_in_url(normalized_url: str) -> bool:
+    """
+    Return True when a URL contains userinfo before the hostname.
+
+    Userinfo can make a URL visually misleading and should receive
+    additional review. This does not independently prove maliciousness.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(normalized_url)
+    return parsed.username is not None or parsed.password is not None
 
 def has_suspicious_tld(hostname: str) -> bool:
     """
@@ -113,5 +124,8 @@ def detect_url_structural_signals(signals: URLTechnicalSignals) -> list[str]:
 
     if has_suspicious_encoding(signals.normalized_url):
         detected.append("suspicious_encoding")
+    
+    if has_userinfo_in_url(signals.normalized_url):
+        detected.append("userinfo_in_url")
 
     return detected

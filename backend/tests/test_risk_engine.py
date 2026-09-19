@@ -259,3 +259,23 @@ def test_suspicious_encoding_adds_risk_points() -> None:
 
     assert len(matching) == 1
     assert matching[0].points == 5
+
+def test_userinfo_in_url_adds_risk_points() -> None:
+    signals = build_signals(
+        hostname="example.com",
+        normalized_url="https://candidate@example.com/jobs",
+    )
+
+    assessment = evaluate_url_risk(signals)
+
+    assert assessment.risk_score == 10
+    assert assessment.risk_category == "low"
+
+    matching = [
+        contribution
+        for contribution in assessment.contributions
+        if contribution.signal == "userinfo_in_url"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].points == 10
