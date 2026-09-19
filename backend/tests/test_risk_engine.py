@@ -279,3 +279,25 @@ def test_userinfo_in_url_adds_risk_points() -> None:
 
     assert len(matching) == 1
     assert matching[0].points == 10
+
+def test_hyphenated_hostname_abuse_adds_risk_points() -> None:
+    signals = build_signals(
+       hostname="alpha-beta-gamma-delta-epsilon.example.com",
+       normalized_url=(
+            "https://alpha-beta-gamma-delta-epsilon.example.com/jobs"
+        ),
+    )
+
+    assessment = evaluate_url_risk(signals)
+
+    assert assessment.risk_score == 5
+    assert assessment.risk_category == "low"
+
+    matching = [
+        contribution
+        for contribution in assessment.contributions
+        if contribution.signal == "hyphenated_hostname_abuse"
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].points == 5

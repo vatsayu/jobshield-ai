@@ -233,6 +233,20 @@ def evaluate_url_risk(
             )
         )
         score += 10
+    if "hyphenated_hostname_abuse" in structural_signals:
+        contributions.append(
+            RiskContribution(
+                signal="hyphenated_hostname_abuse",
+                points=5,
+                explanation=(
+                    "The hostname contains an unusually high number "
+                    "of hyphens, which can make the domain harder to "
+                    "interpret. This is a heuristic indicator and does "
+                    "not alone establish malicious activity."
+                ),
+            )
+        )
+        score += 5
 
     if signals.status_code is not None:
         if 400 <= signals.status_code <= 499:

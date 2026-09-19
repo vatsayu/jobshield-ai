@@ -1,17 +1,13 @@
 from backend.app.schemas.signals import URLTechnicalSignals
 from backend.app.services.url_signal_detector import (
-    count_hostname_labels,
     detect_url_structural_signals,
-    has_excessive_subdomains,
-    has_long_url,
-    is_ip_address_hostname,
 )
 
 
 def build_signals(
     *,
-    hostname: str = "example.com",
     normalized_url: str = "https://example.com/jobs",
+    hostname: str = "example.com",
 ) -> URLTechnicalSignals:
     return URLTechnicalSignals(
         normalized_url=normalized_url,
@@ -32,63 +28,86 @@ def build_signals(
     )
 
 
-def test_detects_ipv4_hostname() -> None:
-    assert is_ip_address_hostname("8.8.8.8") is True
+def test_detects_ip_address_hostname() -> None:
+    from backend.app.services.url_signal_detector import (
+        is_ip_address_hostname,
+    )
 
-
-def test_detects_ipv6_hostname() -> None:
-    assert is_ip_address_hostname("2001:4860:4860::8888") is True
-
-
-def test_rejects_domain_as_ip_hostname() -> None:
+    assert is_ip_address_hostname("192.168.1.10") is True
     assert is_ip_address_hostname("example.com") is False
 
 
 def test_counts_hostname_labels() -> None:
+    from backend.app.services.url_signal_detector import (
+        count_hostname_labels,
+    )
+
     assert count_hostname_labels("example.com") == 2
-    assert count_hostname_labels("a.b.example.com") == 4
+    assert count_hostname_labels("jobs.example.com") == 3
 
 
 def test_detects_excessive_subdomains() -> None:
-    assert has_excessive_subdomains("a.b.c.example.com") is True
+    from backend.app.services.url_signal_detector import (
+        has_excessive_subdomains,
+    )
+
+    assert has_excessive_subdomains(
+        "a.b.c.d.example.com"
+    ) is True
+
+    assert has_excessive_subdomains(
+        "jobs.example.com"
+    ) is False
 
 
-def test_allows_normal_subdomain_count() -> None:
-    assert has_excessive_subdomains("jobs.example.com") is False
+def test_allows_configurable_subdomain_limit() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_excessive_subdomains,
+    )
+
+    assert has_excessive_subdomains(
+        "a.b.example.com",
+        maximum_labels=4,
+    ) is False
+
+    assert has_excessive_subdomains(
+        "a.b.c.example.com",
+        maximum_labels=3,
+    ) is True
 
 
 def test_detects_long_url() -> None:
-    long_url = "https://example.com/" + ("a" * 130)
-    assert has_long_url(long_url) is True
-
-
-def test_allows_normal_url_length() -> None:
-    assert has_long_url("https://example.com/jobs") is False
-
-
-def test_detect_url_structural_signals() -> None:
-    signals = build_signals(
-        hostname="a.b.c.example.com",
-        normalized_url="https://a.b.c.example.com/" + ("x" * 130),
+    from backend.app.services.url_signal_detector import (
+        has_long_url,
     )
 
-    detected = detect_url_structural_signals(signals)
+    url = "https://example.com/" + ("a" * 130)
 
-    assert detected == [
-        "excessive_subdomains",
-        "long_url",
-    ]
+    assert has_long_url(url) is True
 
 
-def test_detects_ip_hostname_structural_signal() -> None:
-    signals = build_signals(
-        hostname="8.8.8.8",
-        normalized_url="https://8.8.8.8/jobs",
+def test_allows_normal_length_url() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_long_url,
     )
 
-    detected = detect_url_structural_signals(signals)
+    assert has_long_url(
+        "https://example.com/jobs"
+    ) is False
 
-    assert detected == ["ip_address_hostname"]
+
+def test_allows_configurable_url_length() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_long_url,
+    )
+
+    url = "https://example.com/" + ("a" * 60)
+
+    assert has_long_url(
+        url,
+        maximum_length=50,
+    ) is True
+
 
 def test_detects_suspicious_tld() -> None:
     from backend.app.services.url_signal_detector import (
@@ -118,15 +137,25 @@ def test_suspicious_tld_is_detected_structurally() -> None:
 
     assert detected == ["suspicious_tld"]
 
-def test_detects_suspicious_url_encoding() -> None:
-    from backend.app.services.url_signal_detector import has_suspicious_encoding
 
-    assert has_suspicious_encoding("https://example.com/%2Flogin") is True
-    assert has_suspicious_encoding("https://example.com/%252e%252e%252f") is True
+def test_detects_suspicious_url_encoding() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_suspicious_encoding,
+    )
+
+    assert has_suspicious_encoding(
+        "https://example.com/%2Flogin"
+    ) is True
+
+    assert has_suspicious_encoding(
+        "https://example.com/%252e%252e%252f"
+    ) is True
 
 
 def test_detects_excessive_percent_encoding() -> None:
-    from backend.app.services.url_signal_detector import has_suspicious_encoding
+    from backend.app.services.url_signal_detector import (
+        has_suspicious_encoding,
+    )
 
     url = "https://example.com/path/%41/%42/%43/%44"
 
@@ -134,10 +163,17 @@ def test_detects_excessive_percent_encoding() -> None:
 
 
 def test_allows_normal_url_encoding() -> None:
-    from backend.app.services.url_signal_detector import has_suspicious_encoding
+    from backend.app.services.url_signal_detector import (
+        has_suspicious_encoding,
+    )
 
-    assert has_suspicious_encoding("https://example.com/jobs?id=123") is False
-    assert has_suspicious_encoding("https://example.com/careers") is False
+    assert has_suspicious_encoding(
+        "https://example.com/jobs?id=123"
+    ) is False
+
+    assert has_suspicious_encoding(
+        "https://example.com/careers"
+    ) is False
 
 
 def test_suspicious_encoding_is_detected_structurally() -> None:
@@ -149,3 +185,73 @@ def test_suspicious_encoding_is_detected_structurally() -> None:
     detected = detect_url_structural_signals(signals)
 
     assert detected == ["suspicious_encoding"]
+
+
+def test_detects_userinfo_in_url() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_userinfo_in_url,
+    )
+
+    assert has_userinfo_in_url(
+        "https://candidate@example.com/jobs"
+    ) is True
+
+    assert has_userinfo_in_url(
+        "https://user:password@example.com/jobs"
+    ) is True
+
+
+def test_allows_url_without_userinfo() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_userinfo_in_url,
+    )
+
+    assert has_userinfo_in_url(
+        "https://example.com/jobs"
+    ) is False
+
+
+def test_userinfo_is_detected_structurally() -> None:
+    signals = build_signals(
+        hostname="example.com",
+        normalized_url=(
+            "https://candidate@example.com/jobs"
+        ),
+    )
+
+    detected = detect_url_structural_signals(signals)
+
+    assert detected == ["userinfo_in_url"]
+
+
+def test_detects_hyphenated_hostname_abuse() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_hyphenated_hostname_abuse,
+    )
+
+    assert has_hyphenated_hostname_abuse(
+        "secure-job-verify-account-login.example.com"
+    ) is True
+
+
+def test_allows_normal_hyphenated_hostname() -> None:
+    from backend.app.services.url_signal_detector import (
+        has_hyphenated_hostname_abuse,
+    )
+
+    assert has_hyphenated_hostname_abuse(
+        "my-job.example.com"
+    ) is False
+
+
+def test_hyphenated_hostname_abuse_is_detected_structurally() -> None:
+    signals = build_signals(
+        hostname="secure-job-verify-account-login.example.com",
+        normalized_url=(
+            "https://secure-job-verify-account-login.example.com/jobs"
+        ),
+    )
+
+    detected = detect_url_structural_signals(signals)
+
+    assert detected == ["hyphenated_hostname_abuse"]

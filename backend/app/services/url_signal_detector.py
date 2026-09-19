@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ipaddress import ip_address
+from urllib.parse import urlparse
 
 from backend.app.schemas.signals import URLTechnicalSignals
 
@@ -70,13 +71,17 @@ def has_suspicious_encoding(normalized_url: str) -> bool:
         return True
 
     suspicious_sequences = (
-        "%2f",  # /
-        "%5c",  # \
-        "%2e",  # .
-        "%25",  # encoded %
+        "%2f",
+        "%5c",
+        "%2e",
+        "%25",
     )
 
-    return any(sequence in normalized_url.lower() for sequence in suspicious_sequences)
+    return any(
+        sequence in normalized_url.lower()
+        for sequence in suspicious_sequences
+    )
+
 
 def has_userinfo_in_url(normalized_url: str) -> bool:
     """
@@ -85,10 +90,13 @@ def has_userinfo_in_url(normalized_url: str) -> bool:
     Userinfo can make a URL visually misleading and should receive
     additional review. This does not independently prove maliciousness.
     """
-    from urllib.parse import urlparse
-
     parsed = urlparse(normalized_url)
-    return parsed.username is not None or parsed.password is not None
+
+    return (
+        parsed.username is not None
+        or parsed.password is not None
+    )
+
 
 def has_suspicious_tld(hostname: str) -> bool:
     """
@@ -107,8 +115,25 @@ def has_suspicious_tld(hostname: str) -> bool:
     return labels[-1] in SUSPICIOUS_TLDS
 
 
-def detect_url_structural_signals(signals: URLTechnicalSignals) -> list[str]:
-    detected = []
+def has_hyphenated_hostname_abuse(
+    hostname: str,
+    *,
+    maximum_hyphens: int = 3,
+) -> bool:
+    """
+    Return True when the hostname contains an unusually high number
+    of hyphens.
+
+    This is a heuristic indicator only and does not establish
+    malicious activity.
+    """
+    return hostname.count("-") > maximum_hyphens
+
+
+def detect_url_structural_signals(
+    signals: URLTechnicalSignals,
+) -> list[str]:
+    detected: list[str] = []
 
     if is_ip_address_hostname(signals.hostname):
         detected.append("ip_address_hostname")
@@ -124,8 +149,11 @@ def detect_url_structural_signals(signals: URLTechnicalSignals) -> list[str]:
 
     if has_suspicious_encoding(signals.normalized_url):
         detected.append("suspicious_encoding")
-    
+
     if has_userinfo_in_url(signals.normalized_url):
         detected.append("userinfo_in_url")
+
+    if has_hyphenated_hostname_abuse(signals.hostname):
+        detected.append("hyphenated_hostname_abuse")
 
     return detected
