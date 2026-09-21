@@ -1,69 +1,136 @@
+
 "use client";
 
 import { useState } from "react";
+
 import {
   analyzeEmail,
   analyzeMessage,
   analyzeURL,
   type AnalysisResponse,
+  type AnalysisType,
   type RiskCategory,
 } from "@/lib/api";
 
-const analysisModes = [
-  {
-    id: "job",
-    label: "Job Posting",
-    description: "Check a job URL or pasted listing",
-    icon: "↗",
-  },
-  {
-    id: "message",
-    label: "Recruiter Message",
-    description: "Inspect suspicious recruiter messages",
-    icon: "⌁",
-  },
-  {
-    id: "email",
-    label: "Recruitment Email",
-    description: "Analyze email content and signals",
-    icon: "✉",
-  },
-] as const;
+type AnalysisMode = "job" | "message" | "email";
+
+const modeLabels: Record<AnalysisMode, string> = {
+  job: "Job URL",
+  message: "Recruiter Message",
+  email: "Recruiter Email",
+};
+
+const modeDescriptions: Record<AnalysisMode, string> = {
+  job: "Analyze a job posting URL for suspicious indicators.",
+  message: "Review a recruiter message for potential warning signs.",
+  email: "Inspect recruiter email details and message content.",
+};
 
 function riskLabel(category: RiskCategory): string {
-  return category.charAt(0).toUpperCase() + category.slice(1);
+  switch (category) {
+    case "critical":
+      return "Critical";
+    case "high":
+      return "High";
+    case "medium":
+      return "Medium";
+    case "low":
+      return "Low";
+    case "unknown":
+      return "Unknown";
+    default:
+      return "Unknown";
+  }
+}
+
+function formatLabel(value: string): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    );
+}
+
+function riskDescription(category: RiskCategory): string {
+  switch (category) {
+    case "critical":
+      return "Multiple serious risk indicators require immediate caution.";
+
+    case "high":
+      return "Significant risk indicators were detected. Verify independently before proceeding.";
+
+    case "medium":
+      return "Some risk indicators were detected. Review the evidence carefully.";
+
+    case "low":
+      return "Limited risk indicators were detected by the current analysis.";
+
+    case "unknown":
+      return "There is insufficient evidence to determine the level of risk.";
+
+    default:
+      return "Review the available evidence before taking action.";
+  }
+}
+
+function getRiskClass(category: RiskCategory): string {
+  return `risk-${category}`;
+}
+
+function getEvidenceStatusClass(status: string): string {
+  return `evidence-status-${status}`;
+}
+
+function getAnalysisTypeLabel(
+  analysisType: AnalysisType,
+): string {
+  switch (analysisType) {
+    case "url":
+      return "URL Analysis";
+
+    case "message":
+      return "Message Analysis";
+
+    case "email":
+      return "Email Analysis";
+
+    default:
+      return "Security Analysis";
+  }
 }
 
 export default function Home() {
-  const [activeMode, setActiveMode] = useState<
-    (typeof analysisModes)[number]["id"]
-  >("job");
-  const [input, setInput] = useState("");
-  const [subject, setSubject] = useState("");
-  const [sender, setSender] = useState("");
-  const [replyTo, setReplyTo] = useState("");
-  const [result, setResult] = useState<AnalysisResponse | null>(null);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [activeMode, setActiveMode] =
+    useState<AnalysisMode>("job");
 
-  function changeMode(
-    mode: (typeof analysisModes)[number]["id"],
-  ) {
+  const [input, setInput] = useState("");
+
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailSender, setEmailSender] = useState("");
+  const [emailReplyTo, setEmailReplyTo] = useState("");
+
+  const [result, setResult] =
+    useState<AnalysisResponse | null>(null);
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function changeMode(mode: AnalysisMode) {
     setActiveMode(mode);
     setInput("");
-    setSubject("");
-    setSender("");
-    setReplyTo("");
+    setEmailSubject("");
+    setEmailSender("");
+    setEmailReplyTo("");
     setResult(null);
     setError("");
   }
 
   async function handleAnalyze() {
-    if (!input.trim()) {
+    if (!input.trim() || loading) {
       return;
     }
 
-    setIsLoading(true);
+    setLoading(true);
     setError("");
     setResult(null);
 
@@ -76,306 +143,498 @@ export default function Home() {
         response = await analyzeMessage(input.trim());
       } else {
         response = await analyzeEmail({
-          subject: subject.trim(),
-          sender: sender.trim(),
-          reply_to: replyTo.trim(),
+          subject: emailSubject.trim() || undefined,
+          sender: emailSender.trim() || undefined,
+          reply_to: emailReplyTo.trim() || undefined,
           body: input.trim(),
         });
       }
 
       setResult(response);
     } catch (analysisError) {
-      setError(
-        analysisError instanceof Error
-          ? analysisError.message
-          : "Unable to complete the analysis.",
-      );
+      if (analysisError instanceof Error) {
+        setError(analysisError.message);
+      } else {
+        setError(
+          "An unexpected error occurred during analysis.",
+        );
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }
 
-  const inputLabel =
-    activeMode === "job"
-      ? "Job posting URL or listing text"
-      : activeMode === "message"
-        ? "Recruiter message"
-        : "Recruitment email content";
-
-  const inputPlaceholder =
-    activeMode === "job"
-      ? "Paste a job posting URL or the complete job description here..."
-      : activeMode === "message"
-        ? "Paste the recruiter message you received..."
-        : "Paste the email body, sender details, and any requested actions...";
+  const score = result
+    ? Math.min(Math.max(result.risk_score, 0), 100)
+    : 0;
 
   return (
-    <main className="app-shell">
+    <main className="dashboard-shell">
       <aside className="sidebar">
-        <div className="brand">
+        <div className="brand-block">
           <div className="brand-mark">J</div>
+
           <div>
-            <div className="brand-name">JobShield</div>
-            <div className="brand-ai">AI SECURITY LAYER</div>
+            <h1>JobShield AI</h1>
+            <p>Security verification</p>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          <div className="nav-label">WORKSPACE</div>
-
-          <button className="nav-item active">
+        <nav className="sidebar-navigation">
+          <button
+            className="sidebar-link sidebar-link-active"
+            type="button"
+            onClick={() => {
+              setResult(null);
+              setError("");
+            }}
+          >
             <span>⌂</span>
             Dashboard
           </button>
 
-          <button className="nav-item">
-            <span>◈</span>
-            New Analysis
+          <button
+            className="sidebar-link"
+            type="button"
+            onClick={() => changeMode("job")}
+          >
+            <span>⌕</span>
+            URL Analyzer
           </button>
 
-          <button className="nav-item">
-            <span>◷</span>
-            Analysis History
+          <button
+            className="sidebar-link"
+            type="button"
+            onClick={() => changeMode("message")}
+          >
+            <span>✉</span>
+            Message Analyzer
           </button>
 
-          <div className="nav-label secondary-label">RESOURCES</div>
-
-          <button className="nav-item">
-            <span>▣</span>
-            Safety Checklist
-          </button>
-
-          <button className="nav-item">
-            <span>?</span>
-            How It Works
+          <button
+            className="sidebar-link"
+            type="button"
+            onClick={() => changeMode("email")}
+          >
+            <span>▤</span>
+            Email Analyzer
           </button>
         </nav>
 
-        <div className="sidebar-bottom">
-          <div className="security-status">
-            <span className="status-dot" />
-            <div>
-              <strong>Protection active</strong>
-              <small>Analysis engine ready</small>
-            </div>
-          </div>
-
-          <div className="sidebar-footer">
-            <span>v0.1 MVP</span>
-            <span>SECURE MODE</span>
-          </div>
+        <div className="sidebar-footer">
+          <span className="status-dot" />
+          <span>Analysis engine online</span>
         </div>
       </aside>
 
       <section className="main-content">
         <header className="topbar">
           <div>
-            <div className="eyebrow">SECURITY VERIFICATION WORKSPACE</div>
-            <h1>Verify before you trust.</h1>
-            <p>
-              Analyze job opportunities and recruiter communications for
-              security risks before taking action.
+            <p className="eyebrow">
+              Security intelligence workspace
             </p>
+
+            <h2>Verify before you trust.</h2>
           </div>
 
           <div className="topbar-badge">
-            <span className="pulse-dot" />
-            AI analysis available
+            <span className="status-dot" />
+            MVP Environment
           </div>
         </header>
 
-        <div className="content-grid">
-          <section className="analyzer-card">
-            <div className="card-header">
+        <section className="hero-grid">
+          <div className="hero-panel">
+            <div className="section-heading">
               <div>
-                <span className="section-kicker">START AN ANALYSIS</span>
-                <h2>What would you like to verify?</h2>
+                <p className="eyebrow">New analysis</p>
+                <h3>Check recruitment risk</h3>
               </div>
-              <div className="shield-symbol">⌾</div>
+
+              <span className="secure-badge">
+                Secure workflow
+              </span>
             </div>
 
-            <div className="mode-tabs">
-              {analysisModes.map((mode) => (
-                <button
-                  key={mode.id}
-                  className={`mode-tab ${
-                    activeMode === mode.id ? "selected" : ""
-                  }`}
-                  onClick={() => changeMode(mode.id)}
-                >
-                  <span className="mode-icon">{mode.icon}</span>
-                  <span>
-                    <strong>{mode.label}</strong>
-                    <small>{mode.description}</small>
-                  </span>
-                </button>
-              ))}
+            <p className="panel-description">
+              Analyze job postings, recruiter messages, and
+              recruitment emails for security and trust indicators.
+            </p>
+
+            <div className="mode-selector">
+              {(Object.keys(modeLabels) as AnalysisMode[]).map(
+                (mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`mode-button ${
+                      activeMode === mode
+                        ? "mode-button-active"
+                        : ""
+                    }`}
+                    onClick={() => changeMode(mode)}
+                  >
+                    {modeLabels[mode]}
+                  </button>
+                ),
+              )}
             </div>
+
+            <div className="input-heading">
+              <label htmlFor="analysis-input">
+                {modeLabels[activeMode]}
+              </label>
+
+              <span>
+                {activeMode === "job"
+                  ? "Public URL"
+                  : "Text input"}
+              </span>
+            </div>
+
+            <p className="input-description">
+              {modeDescriptions[activeMode]}
+            </p>
 
             {activeMode === "email" && (
               <div className="email-fields">
-                <input
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  placeholder="Email subject"
-                  aria-label="Email subject"
-                />
-                <input
-                  value={sender}
-                  onChange={(event) => setSender(event.target.value)}
-                  placeholder="Sender email address"
-                  aria-label="Sender email address"
-                />
-                <input
-                  value={replyTo}
-                  onChange={(event) => setReplyTo(event.target.value)}
-                  placeholder="Reply-To address (optional)"
-                  aria-label="Reply-To address"
-                />
+                <div className="field-group">
+                  <label htmlFor="email-subject">
+                    Subject
+                  </label>
+
+                  <input
+                    id="email-subject"
+                    type="text"
+                    value={emailSubject}
+                    onChange={(event) =>
+                      setEmailSubject(event.target.value)
+                    }
+                    placeholder="Recruiter email subject"
+                  />
+                </div>
+
+                <div className="field-group">
+                  <label htmlFor="email-sender">
+                    Sender
+                  </label>
+
+                  <input
+                    id="email-sender"
+                    type="email"
+                    value={emailSender}
+                    onChange={(event) =>
+                      setEmailSender(event.target.value)
+                    }
+                    placeholder="sender@example.com"
+                  />
+                </div>
+
+                <div className="field-group">
+                  <label htmlFor="email-reply-to">
+                    Reply-to
+                  </label>
+
+                  <input
+                    id="email-reply-to"
+                    type="email"
+                    value={emailReplyTo}
+                    onChange={(event) =>
+                      setEmailReplyTo(event.target.value)
+                    }
+                    placeholder="reply@example.com"
+                  />
+                </div>
               </div>
             )}
 
-            <div className="input-area">
-              <label htmlFor="analysis-input">{inputLabel}</label>
-
+            <div className="textarea-wrapper">
               <textarea
                 id="analysis-input"
                 value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder={inputPlaceholder}
+                onChange={(event) =>
+                  setInput(event.target.value)
+                }
+                placeholder={
+                  activeMode === "job"
+                    ? "https://example.com/job-posting"
+                    : activeMode === "message"
+                      ? "Paste the recruiter message here..."
+                      : "Paste the email body here..."
+                }
+                rows={activeMode === "job" ? 4 : 8}
               />
 
-              <div className="input-footer">
+              <div className="textarea-footer">
                 <span>
-                  <span className="tiny-lock">⌑</span>
-                  Your submitted content is analyzed securely
+                  {input.length.toLocaleString()} characters
                 </span>
-                <span>{input.length} characters</span>
+
+                <span>
+                  Content is analyzed as untrusted input
+                </span>
               </div>
             </div>
 
             <button
               className="analyze-button"
-              disabled={!input.trim() || isLoading}
+              type="button"
+              disabled={!input.trim() || loading}
               onClick={handleAnalyze}
             >
-              <span>
-                {isLoading ? "Analyzing security signals..." : "Run security analysis"}
-              </span>
-              <span className="button-arrow">{isLoading ? "…" : "→"}</span>
+              {loading ? (
+                <>
+                  <span className="button-spinner" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  Analyze security risk
+                  <span>→</span>
+                </>
+              )}
             </button>
 
-            {error && (
-              <div className="analysis-error" role="alert">
-                <strong>Analysis could not be completed</strong>
-                <span>{error}</span>
-              </div>
-            )}
+            <p className="privacy-note">
+              Do not submit passwords, access tokens, or other
+              sensitive personal information.
+            </p>
+          </div>
 
-            {result && (
-              <div className="result-card">
-                <div className="result-header">
-                  <div>
-                    <span className="section-kicker">ANALYSIS RESULT</span>
-                    <h3>{riskLabel(result.risk_category)} risk detected</h3>
-                  </div>
-                  <div className={`risk-score risk-${result.risk_category}`}>
-                    {result.risk_score}
-                  </div>
+          <div className="information-column">
+            <article className="info-card">
+              <span className="info-card-icon">◈</span>
+
+              <h4>Evidence-based analysis</h4>
+
+              <p>
+                Results identify observable indicators rather than
+                making unsupported fraud claims.
+              </p>
+            </article>
+
+            <article className="info-card">
+              <span className="info-card-icon">⌁</span>
+
+              <h4>Risk classification</h4>
+
+              <p>
+                Review risk categories, scores, evidence, and
+                recommended next steps.
+              </p>
+            </article>
+
+            <article className="info-card">
+              <span className="info-card-icon">✓</span>
+
+              <h4>Human verification</h4>
+
+              <p>
+                Use independent verification before sharing
+                documents, paying fees, or accepting an offer.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        {error && (
+          <section className="error-card" role="alert">
+            <div>
+              <strong>Analysis failed</strong>
+              <p>{error}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setError("")}
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </section>
+        )}
+
+        {result && (
+          <section className="result-card" aria-live="polite">
+            <div className="result-header">
+              <div>
+                <p className="eyebrow">Analysis report</p>
+
+                <h3>
+                  {riskLabel(result.risk_category)} risk category
+                </h3>
+
+                <p className="risk-context">
+                  {riskDescription(result.risk_category)}
+                </p>
+              </div>
+
+              <div
+                className={`risk-score ${getRiskClass(
+                  result.risk_category,
+                )}`}
+              >
+                <strong>{score}</strong>
+
+                <span>/100</span>
+
+                <small>Risk score</small>
+              </div>
+            </div>
+
+            <div className="risk-scale">
+              <div
+                className={`risk-scale-fill ${getRiskClass(
+                  result.risk_category,
+                )}`}
+                style={{
+                  width: `${score}%`,
+                }}
+              />
+            </div>
+
+            <div className="result-summary">
+              <h4>Summary</h4>
+
+              <p>{result.summary}</p>
+            </div>
+
+            <div className="result-meta">
+              <span>
+                Type:{" "}
+                <strong>
+                  {getAnalysisTypeLabel(result.analysis_type)}
+                </strong>
+              </span>
+
+              <span>
+                Status:{" "}
+                <strong>{formatLabel(result.status)}</strong>
+              </span>
+
+              <span>
+                ID: <strong>{result.analysis_id}</strong>
+              </span>
+            </div>
+
+            <div className="result-section">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Analysis findings</p>
+
+                  <h4>Evidence detected</h4>
                 </div>
 
-                <p className="result-summary">{result.summary}</p>
-
-                <div className="result-meta">
-                  <span>Status: {result.status}</span>
-                  <span>ID: {result.analysis_id}</span>
-                </div>
-
-                {result.evidence.length > 0 && (
-                  <div className="result-section">
-                    <span className="section-kicker">EVIDENCE</span>
-                    <div className="evidence-list">
-                      {result.evidence.map((item, index) => (
-                        <div className="evidence-item" key={`${item.signal}-${index}`}>
-                          <div className="evidence-topline">
-                            <strong>{item.signal}</strong>
-                            <span className={`severity severity-${item.severity}`}>
-                              {item.severity}
-                            </span>
-                          </div>
-                          <p>{item.explanation}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {result.recommended_actions.length > 0 && (
-                  <div className="result-section">
-                    <span className="section-kicker">RECOMMENDED ACTIONS</span>
-                    <ul className="recommendation-list">
-                      {result.recommended_actions.map((action, index) => (
-                        <li key={`${action}-${index}`}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <span className="section-count">
+                  {result.evidence.length} findings
+                </span>
               </div>
-            )}
 
-            <div className="analysis-note">
-              <span>i</span>
-              JobShield provides risk indicators and evidence—not absolute
-              guarantees. Unknown does not mean safe.
+              {result.evidence.length === 0 ? (
+                <div className="empty-evidence">
+                  No evidence items were returned by the analysis
+                  engine.
+                </div>
+              ) : (
+                <div className="evidence-list">
+                  {result.evidence.map((item, index) => (
+                    <article
+                      className="evidence-item"
+                      key={`${item.signal}-${index}`}
+                    >
+                      <div className="evidence-topline">
+                        <strong>
+                          {formatLabel(item.signal)}
+                        </strong>
+
+                        <span
+                          className={`severity-badge severity-${item.severity}`}
+                        >
+                          {riskLabel(item.severity)}
+                        </span>
+                      </div>
+
+                      <p>{item.explanation}</p>
+
+                      <div className="evidence-metadata">
+                        <span>
+                          Category:{" "}
+                          <strong>
+                            {formatLabel(item.category)}
+                          </strong>
+                        </span>
+
+                        <span
+                          className={`evidence-status ${getEvidenceStatusClass(
+                            item.status,
+                          )}`}
+                        >
+                          {formatLabel(item.status)}
+                        </span>
+
+                        <span>
+                          Source:{" "}
+                          <strong>
+                            {formatLabel(item.source)}
+                          </strong>
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="result-section">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">
+                    Recommended next steps
+                  </p>
+
+                  <h4>Actions to consider</h4>
+                </div>
+              </div>
+
+              {result.recommended_actions.length === 0 ? (
+                <p className="empty-evidence">
+                  No recommended actions were returned.
+                </p>
+              ) : (
+                <ol className="recommendation-list">
+                  {result.recommended_actions.map(
+                    (action, index) => (
+                      <li key={`${action}-${index}`}>
+                        <span>{index + 1}</span>
+
+                        <p>{action}</p>
+                      </li>
+                    ),
+                  )}
+                </ol>
+              )}
+            </div>
+
+            <div className="report-disclaimer">
+              <strong>Important limitation</strong>
+
+              <p>
+                This report presents risk indicators identified by
+                the analysis engine. It does not establish that a
+                recruiter, organization, or job posting is
+                fraudulent. Unknown or insufficient evidence does
+                not mean safe.
+              </p>
             </div>
           </section>
+        )}
 
-          <aside className="side-column">
-            <div className="principles-card">
-              <div className="card-icon">✦</div>
-              <span className="section-kicker">OUR APPROACH</span>
-              <h3>Evidence over assumptions.</h3>
-              <p>
-                JobShield separates technical findings, suspicious signals,
-                and uncertainty so you can make informed decisions.
-              </p>
+        <footer className="page-footer">
+          <span>JobShield AI</span>
 
-              <div className="principle-list">
-                <div>
-                  <span>01</span>
-                  <p>Analyze observable signals</p>
-                </div>
-                <div>
-                  <span>02</span>
-                  <p>Explain why something matters</p>
-                </div>
-                <div>
-                  <span>03</span>
-                  <p>Recommend a safer next action</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="quick-card">
-              <div className="quick-card-heading">
-                <span className="section-kicker">BEFORE YOU PROCEED</span>
-                <span>↗</span>
-              </div>
-              <ul>
-                <li>Never pay to receive a job offer</li>
-                <li>Verify recruiter identity independently</li>
-                <li>Do not share sensitive documents prematurely</li>
-              </ul>
-            </div>
-          </aside>
-        </div>
-
-        <footer className="main-footer">
           <span>
-            <span className="footer-shield">◈</span>
-            Built for safer digital hiring decisions
+            Analyze → Explain → Evidence → Safe action
           </span>
-          <span>JobShield AI is an analysis intermediary, not a recruiter.</span>
         </footer>
       </section>
     </main>

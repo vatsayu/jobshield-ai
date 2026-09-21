@@ -1,3 +1,4 @@
+
 export type AnalysisType = "url" | "message" | "email";
 
 export type RiskCategory =
@@ -13,11 +14,25 @@ export type AnalysisStatus =
   | "completed"
   | "failed";
 
+export type EvidenceStatus =
+  | "detected"
+  | "verified"
+  | "unverified"
+  | "insufficient_evidence";
+
+export type EvidenceSource =
+  | "deterministic_analysis"
+  | "external_verification"
+  | "user_provided"
+  | "ai_analysis";
+
 export interface EvidenceItem {
   category: string;
   signal: string;
   explanation: string;
   severity: RiskCategory;
+  status: EvidenceStatus;
+  source: EvidenceSource;
 }
 
 export interface AnalysisResponse {
@@ -74,7 +89,9 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
-export function analyzeURL(url: string): Promise<AnalysisResponse> {
+export function analyzeURL(
+  url: string,
+): Promise<AnalysisResponse> {
   return request<AnalysisResponse>("/api/v1/analyze/url", {
     url,
   });
