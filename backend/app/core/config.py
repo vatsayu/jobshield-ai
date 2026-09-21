@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_host: str = "127.0.0.1"
     app_port: int = 8000
+        # AI provider configuration
+    ai_enabled: bool = False
+    ai_provider: str = "none"
+    ai_model: str = ""
+    ai_api_key: str = ""
+    ai_timeout_seconds: float = 20.0
 
     api_v1_prefix: str = "/api/v1"
 
