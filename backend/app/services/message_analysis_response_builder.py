@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -15,12 +16,16 @@ from backend.app.services.message_signal_detector import (
 )
 
 
-def _signal_to_evidence(signal: MessageSignal) -> EvidenceItem:
+def _signal_to_evidence(
+    signal: MessageSignal,
+) -> EvidenceItem:
     return EvidenceItem(
         category=signal.category,
         signal=signal.signal,
         explanation=signal.explanation,
         severity=signal.severity,
+        status="detected",
+        source="deterministic_analysis",
     )
 
 
@@ -35,10 +40,12 @@ def build_message_analysis_response(
             category="message_analysis",
             signal="message_processed",
             explanation=(
-                "The recruitment message was analyzed using deterministic "
-                "security-relevant text indicators."
+                "The recruitment message was analyzed using "
+                "deterministic security-relevant text indicators."
             ),
             severity="unknown",
+            status="detected",
+            source="deterministic_analysis",
         )
     ]
 
@@ -46,21 +53,22 @@ def build_message_analysis_response(
         _signal_to_evidence(signal)
         for signal in signals
     )
-    # Risk contributions are already represented by the detected signal
-    # evidence above. Do not append them again, otherwise the UI displays
-    # duplicate evidence items.
+
+    # Risk contributions are already represented by detected
+    # signal evidence above. Do not append them again because
+    # that would create duplicate evidence items.
 
     if signals:
         summary = (
-            "The message contains one or more security-relevant indicators. "
-            "These indicators require further verification and do not by "
-            "themselves prove fraud."
+            "The message contains one or more security-relevant "
+            "indicators. These indicators require further "
+            "verification and do not by themselves prove fraud."
         )
     else:
         summary = (
-            "No predefined suspicious indicators were identified in the "
-            "message. This does not prove that the sender or opportunity "
-            "is legitimate."
+            "No predefined suspicious indicators were identified "
+            "in the message. This does not prove that the sender "
+            "or opportunity is legitimate."
         )
 
     recommended_actions = [

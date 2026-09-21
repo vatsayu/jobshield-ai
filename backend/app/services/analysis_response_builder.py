@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -25,6 +26,8 @@ def _build_technical_evidence(
                     "The URL uses HTTPS for transport encryption."
                 ),
                 severity="unknown",
+                status="detected",
+                source="deterministic_analysis",
             )
         )
     else:
@@ -37,6 +40,8 @@ def _build_technical_evidence(
                     "Transport encryption is not verified."
                 ),
                 severity="medium",
+                status="detected",
+                source="deterministic_analysis",
             )
         )
 
@@ -51,6 +56,8 @@ def _build_technical_evidence(
                     f"{signals.port}."
                 ),
                 severity="medium",
+                status="detected",
+                source="deterministic_analysis",
             )
         )
 
@@ -66,6 +73,8 @@ def _build_technical_evidence(
                         f"{signals.status_code}."
                     ),
                     severity="unknown",
+                    status="detected",
+                    source="deterministic_analysis",
                 )
             )
 
@@ -79,6 +88,8 @@ def _build_technical_evidence(
                         f"HTTP status {signals.status_code}."
                     ),
                     severity="medium",
+                    status="detected",
+                    source="deterministic_analysis",
                 )
             )
 
@@ -92,6 +103,8 @@ def _build_technical_evidence(
                         f"HTTP status {signals.status_code}."
                     ),
                     severity="high",
+                    status="detected",
+                    source="deterministic_analysis",
                 )
             )
 
@@ -111,6 +124,8 @@ def build_url_analysis_response(
                 f"Normalized URL: {signals.normalized_url}"
             ),
             severity="unknown",
+            status="detected",
+            source="deterministic_analysis",
         )
     ]
 
@@ -135,6 +150,8 @@ def build_url_analysis_response(
                     f"{signals.final_url}."
                 ),
                 severity="unknown",
+                status="detected",
+                source="deterministic_analysis",
             )
         )
 
@@ -148,6 +165,8 @@ def build_url_analysis_response(
                         f"{signals.content_type}."
                     ),
                     severity="unknown",
+                    status="detected",
+                    source="deterministic_analysis",
                 )
             )
 
@@ -162,6 +181,8 @@ def build_url_analysis_response(
                         "validated redirect(s)."
                     ),
                     severity="unknown",
+                    status="detected",
+                    source="deterministic_analysis",
                 )
             )
 
@@ -192,6 +213,8 @@ def build_url_analysis_response(
                     "server could not be safely fetched."
                 ),
                 severity="unknown",
+                status="detected",
+                source="deterministic_analysis",
             )
         )
 
@@ -229,6 +252,8 @@ def build_url_analysis_response(
                     if contribution.points >= 15
                     else "medium"
                 ),
+                status="detected",
+                source="deterministic_analysis",
             )
         )
 

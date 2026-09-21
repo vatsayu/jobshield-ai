@@ -1,21 +1,31 @@
+
 from __future__ import annotations
 
 from uuid import uuid4
 
-from backend.app.schemas.analysis import AnalysisResponse, EvidenceItem
-from backend.app.services.email_risk_engine import evaluate_email_risk
+from backend.app.schemas.analysis import (
+    AnalysisResponse,
+    EvidenceItem,
+)
+from backend.app.services.email_risk_engine import (
+    evaluate_email_risk,
+)
 from backend.app.services.email_signal_detector import (
     EmailSignal,
     detect_email_signals,
 )
 
 
-def _signal_to_evidence(signal: EmailSignal) -> EvidenceItem:
+def _signal_to_evidence(
+    signal: EmailSignal,
+) -> EvidenceItem:
     return EvidenceItem(
         category=signal.category,
         signal=signal.signal,
         explanation=signal.explanation,
         severity=signal.severity,
+        status="detected",
+        source="deterministic_analysis",
     )
 
 
@@ -35,15 +45,18 @@ def build_email_analysis_response(
 
     risk_assessment = evaluate_email_risk(signals)
 
-    evidence = [
+    evidence: list[EvidenceItem] = [
         EvidenceItem(
             category="email_analysis",
             signal="email_processed",
             explanation=(
-                "The email was analyzed using deterministic security-relevant "
-                "content, sender, routing, and attachment indicators."
+                "The email was analyzed using deterministic "
+                "security-relevant content, sender, routing, "
+                "and attachment indicators."
             ),
             severity="unknown",
+            status="detected",
+            source="deterministic_analysis",
         )
     ]
 
@@ -52,7 +65,20 @@ def build_email_analysis_response(
         for signal in signals
     )
 
+    # Track existing signals so that risk contributions do not
+    # create duplicate evidence entries.
+    existing_signals = {
+        item.signal
+        for item in evidence
+    }
+
+    # Add only unique risk contributions.
+    # This preserves risk evidence that is not already represented
+    # by a detected email signal.
     for contribution in risk_assessment.contributions:
+        if contribution.signal in existing_signals:
+            continue
+
         evidence.append(
             EvidenceItem(
                 category="deterministic_risk",
@@ -67,19 +93,24 @@ def build_email_analysis_response(
                     if contribution.points >= 15
                     else "low"
                 ),
+                status="detected",
+                source="deterministic_analysis",
             )
         )
 
+        existing_signals.add(contribution.signal)
+
     if signals:
         summary = (
-            "The email contains one or more security-relevant indicators. "
-            "These indicators require further verification and do not by "
-            "themselves prove fraud."
+            "The email contains one or more security-relevant "
+            "indicators. These indicators require further "
+            "verification and do not by themselves prove fraud."
         )
     else:
         summary = (
-            "No predefined suspicious indicators were identified in the email. "
-            "This does not prove that the sender or opportunity is legitimate."
+            "No predefined suspicious indicators were identified "
+            "in the email. This does not prove that the sender "
+            "or opportunity is legitimate."
         )
 
     recommended_actions = [
